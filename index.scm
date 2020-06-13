@@ -9,11 +9,21 @@
 
 (define (application? exp) (pair? exp))
 
-(define (list-of-values value env) 0)
-
 (define (operator exp) (car exp))
 
 (define (operands exp) (cdr exp))
+
+(define (first-operand ops) (car ops))
+
+(define (rest-operands ops) (cdr ops))
+
+(define (no-operands? ops) (null? ops))
+
+(define (list-of-values exp env) 
+  (if (no-operands? exps) 
+    '()
+    (cons (eval (first-operand exps) env)
+          (list-of-values (rest-operands exps) env))))
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
@@ -44,12 +54,19 @@
    (primitive-implementation proc) args))
 
 (define (apply procedure arguments) 
- ( cond 
-        ((primitive-procedure? procedure) 
-         (apply-primitive-procedure procedure arguments))
-        (else 
-          (error 
-            "Unknown procedure type: APPLY" exp))))
+  (cond 
+    ((primitive-procedure? procedure) 
+     (apply-primitive-procedure procedure arguments))
+    ((compound-procedure? procedure)
+     (eval-sequence
+       (procedure-body procedure)
+       (extend-enviroment 
+         (procedure-parameters procedure)
+         arguments
+         procedure-environment procedure)))
+    (else 
+      (error 
+        "Unknown procedure type: APPLY" exp))))
 
 (eval 'l 0)
 

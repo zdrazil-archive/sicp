@@ -3,8 +3,6 @@
         ((string? exp) true)
         (else false)))
 
-(define (lookup-variable-value exp env) 1)
-
 (define (variable? exp) (symbol? exp))
 
 (define (list-of-values exp env) 
@@ -121,7 +119,6 @@
 (define (true? x) (not (eq? x false)))
 (define (false? x) (eq? x false)))
 
-
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
@@ -160,6 +157,28 @@
 (define (apply-primitive-procedure proc args) 
   (apply-in-underlying-scheme 
    (primitive-implementation proc) args))
+
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+(define (compound-procedure? p) 
+  (tagged-list? p 'procedure))
+(define (procedure-parameters p) (cadr p))
+(define (procedure-body p) (caddr p))
+(define (procedure-environment p) (cadddr p))
+
+(define (enclosing-environment env) (cdr env))
+(define (first-frame env) (car env))
+(define the-empty-environment '())
+
+(define (make-frame variables values)
+  (cons variables values))
+(define (frame-variables frame) (car frame))
+(define (frame-values frame) (cdr frame))
+(define (add-binding-to-frame! var val frame)
+  (set-car! frame (cons var (car frame)))
+  (set-cdr! frame (cons val (cdr frame))))
+
+; page 466
 
 (define (apply procedure arguments) 
   (cond 

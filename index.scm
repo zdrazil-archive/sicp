@@ -7,18 +7,6 @@
 
 (define (variable? exp) (symbol? exp))
 
-(define (application? exp) (pair? exp))
-
-(define (operator exp) (car exp))
-
-(define (operands exp) (cdr exp))
-
-(define (first-operand ops) (car ops))
-
-(define (rest-operands ops) (cdr ops))
-
-(define (no-operands? ops) (null? ops))
-
 (define (list-of-values exp env) 
   (if (no-operands? exps) 
     '()
@@ -85,6 +73,54 @@
 
 (define (make-if predicate consequent alternative)
   (list 'if predicate consequent alternative))
+
+(define (begin? exp) (tagged-list? exp 'begin))
+(define (begin-actions exp) (cdr exp))
+(define (last-exp? seq) (null? (cdr seq)))
+(define (first-exp seq) (car seq))
+(define (rest-exps seq) (cdr seq))
+
+(define (sequence->exp seq)
+  (cond ((null? seq) seq)
+        ((last-exp? seq) (first-exp seq))
+        (else (make-begin seq))))
+
+(define (make-begin seq) (cons 'begin seq))
+
+(define (application? exp) (pair? exp))
+(define (operator exp) (car exp))
+(define (operands exp) (cdr exp))
+(define (first-operand ops) (car ops))
+(define (rest-operands ops) (cdr ops))
+(define (no-operands? ops) (null? ops))
+
+(cond ((> x 0) x)
+      ((= x 0) (display 'zero) 0)
+      (else (- x)))
+
+(define (cond? exp (tagged-list? exp 'cond)))
+(define (cond-clauses exp) (cdr exp))
+(define (cond-else-clause? clause)
+  (eq? (cond-predicate clause) 'else))
+(define (cond-predicate clause) (car clause))
+(define (cond-actions clause) (cdr clause))
+(define (cond->if exp) (expand-clauses (cond-clauses exp)))
+(define (expand-clauses clauses)
+  (if (null? clauses)
+    'false ;no else clause
+    (let ((first (car clauses))
+          (rest (cdr clauses)))
+      (if (cond-else-clause? first)
+        (if (null? rest)
+          (sequence->exp (cond-actions first))
+          (error "ELSE clause isn't last: COND->IF" clauses))
+        (make-if (cond-predicate first)
+              (sequence->exp (cond-actions first))
+              (expand-clauses rest))))))
+
+(define (true? x) (not (eq? x false)))
+(define (false? x) (eq? x false)))
+
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)

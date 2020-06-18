@@ -144,19 +144,6 @@
     (eq? (car exp) tag)
     false))
 
-(define (primitive-procedure? proc)
-  (tagged-list? proc 'primitive))
-
-; primitive-procedure: ('primitive car)
-
-(define apply-in-underlying-scheme apply)
-
-(define (primitive-implementation proc)
-  (cadr proc))
-
-(define (apply-primitive-procedure proc args) 
-  (apply-in-underlying-scheme 
-   (primitive-implementation proc) args))
 
 (define (make-procedure parameters body env)
   (list 'procedure parameters body env))
@@ -222,6 +209,41 @@
         (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame) (frame-values frame))))
 
+(define (setup-environment)
+  (let ((initial-env
+          (extend-environment (primitive-procedure-names)
+                             (primitive-procedure-objects)
+                             the-empty-environment)))
+    (define-variable! 'true true initial-env)
+    (define-variable! 'false false initial-env)
+    initial-env))
+
+(define the-global-environment (setup-environment))
+
+(define (primitive-procedure? proc)
+  (tagged-list? proc 'primitive))
+
+(define apply-in-underlying-scheme apply)
+
+(define (primitive-implementation proc)
+  (cadr proc))
+
+(define primitive-procedures 
+  (list (list 'car car)
+        (list 'cdr cdr)
+        (list 'cons cons)
+        (list 'null? null?)))
+
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+
+(define (primitive-procedure-objects)
+  (map (lambda (proc) (list 'primitive (cadr proc)))
+       primitive-procedures))
+
+(define (apply-primitive-procedure proc args) 
+  (apply-in-underlying-scheme 
+   (primitive-implementation proc) args))
 
 (define (apply procedure arguments) 
   (cond 
@@ -230,13 +252,15 @@
     ((compound-procedure? procedure)
      (eval-sequence
        (procedure-body procedure)
-       (extend-enviroment 
+       (extend-environment 
          (procedure-parameters procedure)
          arguments
          procedure-environment procedure)))
     (else 
       (error 
         "Unknown procedure type: APPLY" exp))))
+
+; page 471
 
 (eval 'l 0)
 

@@ -92,11 +92,7 @@
 (define (rest-operands ops) (cdr ops))
 (define (no-operands? ops) (null? ops))
 
-(cond ((> x 0) x)
-      ((= x 0) (display 'zero) 0)
-      (else (- x)))
-
-(define (cond? exp (tagged-list? exp 'cond)))
+(define (cond? exp) (tagged-list? exp 'cond))
 (define (cond-clauses exp) (cdr exp))
 (define (cond-else-clause? clause)
   (eq? (cond-predicate clause) 'else))
@@ -117,7 +113,7 @@
               (expand-clauses rest))))))
 
 (define (true? x) (not (eq? x false)))
-(define (false? x) (eq? x false)))
+(define (false? x) (eq? x false))
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
@@ -165,7 +161,7 @@
   (set-car! frame (cons var (car frame)))
   (set-cdr! frame (cons val (cdr frame))))
 
-(define (extend-enviroment vars vals base-env)
+(define (extend-environment vars vals base-env)
   (if (= (length vars) (length vals))
     (cons (make-frame vars vals) base-env)
     (if (< (length vars) (length vals))
@@ -209,16 +205,8 @@
         (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame) (frame-values frame))))
 
-(define (setup-environment)
-  (let ((initial-env
-          (extend-environment (primitive-procedure-names)
-                             (primitive-procedure-objects)
-                             the-empty-environment)))
-    (define-variable! 'true true initial-env)
-    (define-variable! 'false false initial-env)
-    initial-env))
-
-(define the-global-environment (setup-environment))
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
 
 (define (primitive-procedure? proc)
   (tagged-list? proc 'primitive))
@@ -234,8 +222,6 @@
         (list 'cons cons)
         (list 'null? null?)))
 
-(define (primitive-procedure-names)
-  (map car primitive-procedures))
 
 (define (primitive-procedure-objects)
   (map (lambda (proc) (list 'primitive (cadr proc)))
@@ -244,6 +230,18 @@
 (define (apply-primitive-procedure proc args) 
   (apply-in-underlying-scheme 
    (primitive-implementation proc) args))
+
+(define (setup-environment)
+  (let ((initial-env
+          (extend-environment (primitive-procedure-names)
+                             (primitive-procedure-objects)
+                             the-empty-environment)))
+    (define-variable! 'true true initial-env)
+    (define-variable! 'false false initial-env)
+    initial-env))
+
+(define the-global-environment (setup-environment))
+
 
 (define (apply procedure arguments) 
   (cond 
@@ -260,16 +258,43 @@
       (error 
         "Unknown procedure type: APPLY" exp))))
 
-; page 471
+(define input-prompt ";;; M-Eval input:")
+(define output-prompt ";;; M-Eval value:")
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output (eval input the-global-environment)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
 
-(eval 'l 0)
+(define (prompt-for-input string)
+  (newline) (newline) (display string) (newline))
 
-(eval (5 0) 0)
+(define (announce-output string)
+  (newline) (display string) (newline))
 
-(x 2)
-(+ x 5)
+(define (user-print object)
+  (if (compound-procedure? object)
+    (display (list 'compount-procedure
+                   (procedure-parameters object)
+                   (procedure-body object)
+                   '<procedure-env>))
+    (display object)))
 
-(eval 5 0)
+(define the-global-environment (setup-environment))
+
+(driver-loop)
 
 
-(factorial 5)
+; (eval 'l 0)
+
+; (eval (5 0) 0)
+
+; (x 2)
+; (+ x 5)
+
+; (eval 5 0)
+
+
+; (factorial 5)

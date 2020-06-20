@@ -1,11 +1,41 @@
 #lang sicp
 
-(define (self-evaluating? exp)
-  (cond ((number? exp) true)
-        ((string? exp) true)
-        (else false)))
+(define (eval exp env)
+  (cond ((self-evaluating? exp) exp)
+        ((variable? exp) (lookup-variable-value exp env))
+        ((quoted? exp) (text-of-quotation exp))
+        ((assignment? exp) (eval-assignment exp env))
+        ((definition? exp) (eval-definition exp env))
+        ((if? exp) (eval-if exp env))
+        ((lambda? exp) (make-procedure 
+                         (lambda-parameters exp)
+                         (lambda-body exp)
+                         env))
+        ((begin? exp) 
+         (eval-sequence (begin-actions exp) env))
+        ((cond? exp) (eval (cond->if exp) env))
+        ((application? exp) 
+         (apply (eval (operator exp) env)
+                (list-of-values (operands exp) env)))
+        (else 
+          (error "Unknown expression type: EVAL" exp))))
 
-(define (variable? exp) (symbol? exp))
+(define (apply procedure arguments) 
+  (cond 
+    ((primitive-procedure? procedure) 
+     (apply-primitive-procedure procedure arguments))
+    ((compound-procedure? procedure)
+     (eval-sequence
+       (procedure-body procedure)
+       (extend-environment 
+         (procedure-parameters procedure)
+         arguments
+         (procedure-environment procedure))))
+    (else 
+      (error 
+        "Unknown procedure type: APPLY" procedure))))
+
+(define apply-in-underlying-scheme apply)
 
 (define (list-of-values exps env) 
   (if (no-operands? exps) 
@@ -36,9 +66,19 @@
                     env)
   'ok)
 
-(define (quoted? exp) (tagged-list? exp 'quote))
+;; 4.1.2 p. 455
+(define (self-evaluating? exp)
+  (cond ((number? exp) true)
+        ((string? exp) true)
+        (else false)))
 
+(define (variable? exp) (symbol? exp))
+(define (quoted? exp) (tagged-list? exp 'quote))
 (define (text-of-quotation exp) (cadr exp))
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+    (eq? (car exp) tag)
+    false))
 
 (define (assignment? exp) (tagged-list? exp 'set!))
 (define (assignment-variable exp) (cadr exp))
@@ -75,6 +115,7 @@
   (list 'if predicate consequent alternative))
 
 (define (begin? exp) (tagged-list? exp 'begin))
+
 (define (begin-actions exp) (cdr exp))
 (define (last-exp? seq) (null? (cdr seq)))
 (define (first-exp seq) (car seq))
@@ -101,6 +142,7 @@
 (define (cond-predicate clause) (car clause))
 (define (cond-actions clause) (cdr clause))
 (define (cond->if exp) (expand-clauses (cond-clauses exp)))
+
 (define (expand-clauses clauses)
   (if (null? clauses)
     'false ;no else clause
@@ -116,32 +158,6 @@
 
 (define (true? x) (not (eq? x false)))
 (define (false? x) (eq? x false))
-
-(define (eval exp env)
-  (cond ((self-evaluating? exp) exp)
-        ((variable? exp) (lookup-variable-value exp env))
-        ((quoted? exp) (text-of-quotation exp))
-        ((assignment? exp) (eval-assignment exp env))
-        ((definition? exp) (eval-definition exp env))
-        ((if? exp) (eval-if exp env))
-        ((lambda? exp) (make-procedure 
-                         (lambda-parameters exp)
-                         (lambda-body exp)
-                         env))
-        ((begin? exp) 
-         (eval-sequence (begin-actions exp) env))
-        ((cond? exp) (eval (cond->if exp) env))
-        ((application? exp) 
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
-        (else 
-          (error "Unknown expression type: EVAL" exp))))
-
-(define (tagged-list? exp tag)
-  (if (pair? exp)
-    (eq? (car exp) tag)
-    false))
-
 
 (define (make-procedure parameters body env)
   (list 'procedure parameters body env))
@@ -207,13 +223,8 @@
         (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame) (frame-values frame))))
 
-(define (primitive-procedure-names)
-  (map car primitive-procedures))
-
 (define (primitive-procedure? proc)
   (tagged-list? proc 'primitive))
-
-
 (define (primitive-implementation proc)
   (cadr proc))
 
@@ -224,13 +235,12 @@
         (list 'null? null?)))
 
 
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+
 (define (primitive-procedure-objects)
   (map (lambda (proc) (list 'primitive (cadr proc)))
        primitive-procedures))
-
-(define (apply-primitive-procedure proc args) 
-  (apply-in-underlying-scheme 
-   (primitive-implementation proc) args))
 
 (define (setup-environment)
   (let ((initial-env
@@ -241,22 +251,9 @@
     (define-variable! 'false false initial-env)
     initial-env))
 
-(define (apply procedure arguments) 
-  (cond 
-    ((primitive-procedure? procedure) 
-     (apply-primitive-procedure procedure arguments))
-    ((compound-procedure? procedure)
-     (eval-sequence
-       (procedure-body procedure)
-       (extend-environment 
-         (procedure-parameters procedure)
-         arguments
-         (procedure-environment procedure))))
-    (else 
-      (error 
-        "Unknown procedure type: APPLY" procedure))))
-
-(define apply-in-underlying-scheme apply)
+(define (apply-primitive-procedure proc args) 
+  (apply-in-underlying-scheme 
+   (primitive-implementation proc) args))
 
 
 (define input-prompt ";;; M-Eval input:")

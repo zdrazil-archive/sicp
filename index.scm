@@ -1,3 +1,5 @@
+#lang sicp
+
 (define (self-evaluating? exp)
   (cond ((number? exp) true)
         ((string? exp) true)
@@ -5,7 +7,7 @@
 
 (define (variable? exp) (symbol? exp))
 
-(define (list-of-values exp env) 
+(define (list-of-values exps env) 
   (if (no-operands? exps) 
     '()
     (cons (eval (first-operand exps) env)
@@ -201,7 +203,7 @@
     (define (scan vars vals)
       (cond 
         ((null? vars) (add-binding-to-frame! var val frame))
-        ((eq? var (car vars)) (set-car! varls val))
+        ((eq? var (car vars)) (set-car! vars val))
         (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame) (frame-values frame))))
 
@@ -211,7 +213,6 @@
 (define (primitive-procedure? proc)
   (tagged-list? proc 'primitive))
 
-(define apply-in-underlying-scheme apply)
 
 (define (primitive-implementation proc)
   (cadr proc))
@@ -240,9 +241,6 @@
     (define-variable! 'false false initial-env)
     initial-env))
 
-(define the-global-environment (setup-environment))
-
-
 (define (apply procedure arguments) 
   (cond 
     ((primitive-procedure? procedure) 
@@ -253,10 +251,13 @@
        (extend-environment 
          (procedure-parameters procedure)
          arguments
-         procedure-environment procedure)))
+         (procedure-environment procedure))))
     (else 
       (error 
-        "Unknown procedure type: APPLY" exp))))
+        "Unknown procedure type: APPLY" procedure))))
+
+(define apply-in-underlying-scheme apply)
+
 
 (define input-prompt ";;; M-Eval input:")
 (define output-prompt ";;; M-Eval value:")

@@ -14,11 +14,11 @@
         ((begin? exp) (eval-sequence (begin-actions exp) env))
         ((cond? exp) (eval (cond->if exp) env))
         ((application? exp)
-         (apply (eval (operator exp) env)
+         (meta-apply (eval (operator exp) env)
                 (list-of-values (operands exp) env)))
         (else (error "Unknown expression type: EVAL" exp))))
 
-(define (apply procedure arguments)
+(define (meta-apply procedure arguments)
   (cond
     ((primitive-procedure? procedure)
      (apply-primitive-procedure procedure arguments))
@@ -257,7 +257,7 @@
   (let ((input (read)))
     (let ((output (eval input the-global-environment)))
       (announce-output output-prompt)
-      (user-print output)))
+      (display output)))
   (driver-loop))
 
 (define (prompt-for-input string)
@@ -277,7 +277,7 @@
 (define the-global-environment (setup-environment))
 
 ;; p. 471
-; ;; (driver-loop)
+(driver-loop)
 
 
 ; (eval 'l 0)

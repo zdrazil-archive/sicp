@@ -1,5 +1,7 @@
 #lang sicp
 
+; Scheme quick reference https://web-artanis.com/scheme.html
+
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp) (lookup-variable-value exp env))
@@ -227,6 +229,7 @@
   (list (list 'car car)
         (list 'cdr cdr)
         (list 'cons cons)
+        (list '+ +)
         (list 'null? null?)))
 
 (define (primitive-procedure-names)
@@ -257,6 +260,7 @@
   (let ((input (read)))
     (let ((output (eval input the-global-environment)))
       (announce-output output-prompt)
+      (announce-output the-global-environment)
       (display output)))
   (driver-loop))
 
@@ -276,18 +280,11 @@
 
 (define the-global-environment (setup-environment))
 
+(define d driver-loop)
+
 ;; p. 471
 (driver-loop)
 
-
-; (eval 'l 0)
-
-; (eval (5 0) 0)
-
-; (x 2)
-; (+ x 5)
-
-; (eval 5 0)
 
 
 ; (factorial 5)
